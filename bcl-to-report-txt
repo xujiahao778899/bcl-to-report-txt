@@ -1,0 +1,51 @@
+cd /data/xujh/2023_10_24/index
+ls > sample.txt
+cat sample.txt|while read id;
+do mkdir /data/xujh/2023_10_24/index/${id}/raw_data
+ /data/software/tools/bcl2fastq2/bin/bcl2fastq --input-dir /data/novaseq/2023_10_24/231024_A00602_0659_AHJNMLDSX7/Data/Intensities/BaseCalls --sample-sheet /data/xujh/2023_10_24/index/${id}/Sample_sheet.csv --output-dir /data/xujh/2023_10_24/index/${id}/raw_data --runfolder-dir /data/novaseq/2023_10_24/231024_A00602_0659_AHJNMLDSX7 -r 35 -p 35 -w 35 --no-lane-splitting
+done
+
+cd /data/xujh/2023_10_24/index
+awk '{print $1}' name.txt |uniq|while read id;
+do mkdir  /data/2023_10_24_bcl_PJ/${id} /data/2023_10_24_bcl_PJ/${id}/00.RawData
+rm -rf /data/xujh/2023_10_24/index/*/raw_data/Undetermined*
+grep ${id} name.txt|awk '{print $2}'|while read i;
+do mv /data/xujh/2023_10_24/index/*/raw_data/${i}_*  /data/2023_10_24_bcl_PJ/${id}/00.RawData
+done
+done
+
+cd /data/xujh/2023_10_24/index
+awk '{print $1}' name.txt |sort|uniq|while read id;
+do mkdir /data/2023_10_24_bcl_PJ/${id}/01.CleanData  /data/2023_10_24_bcl_PJ/${id}/02.QC /data/2023_10_24_bcl_PJ/${id}/02.QC/json_html 
+grep ${id} name.txt|awk '{print $2}'|while read i;
+do /data/software/package/fastp/fastp -i /data/2023_10_24_bcl_PJ/${id}/00.RawData/${i}_*R1* -I /data/2023_10_24_bcl_PJ/${id}/00.RawData/${i}_*R2* -o /data/2023_10_24_bcl_PJ/${id}/01.CleanData/${i}_clean_R1.fastq.gz -O /data/2023_10_24_bcl_PJ/${id}/01.CleanData/${i}_clean_R2.fastq.gz -w 20 -j /data/2023_10_24_bcl_PJ/${id}/02.QC/json_html/${i}.json -h /data/2023_10_24_bcl_PJ/${id}/02.QC/json_html/${i}.html
+done
+done
+
+cd /data/xujh/2023_10_24/index
+export PATH=/data/software/tools/miniconda/bin:$PATH
+source activate /data/software/tools/miniconda/envs/bcl_report
+awk '{print $1}' name.txt |uniq|while read id;
+do  mkdir /data/2023_10_24_bcl_PJ/${id}/03.Report 
+python /data/xujh/report/create_report.py -in_dir /data/2023_10_24_bcl_PJ/${id}/02.QC/json_html -out_dir  /data/2023_10_24_bcl_PJ/${id}/03.Report  -html_path /data/xujh/report/findal_report_template -report_title '测序以及数据质控'
+done
+
+cd /data/xujh/2023_10_24/index
+awk '{print $1}' name.txt |uniq|while read id;
+do grep ${id} name.txt|awk '{print $2}'|while read i;
+do mkdir /data/2023_10_24_bcl_PJ/${id}/00.RawData/${i} /data/2023_10_24_bcl_PJ/${id}/01.CleanData/${i}
+mv /data/2023_10_24_bcl_PJ/${id}/00.RawData/${i}_*.gz /data/2023_10_24_bcl_PJ/${id}/00.RawData/${i}
+mv /data/2023_10_24_bcl_PJ/${id}/01.CleanData/${i}_*.gz /data/2023_10_24_bcl_PJ/${id}/01.CleanData/${i}
+done
+done
+
+cd /data/xujh/2023_10_24/index
+awk '{print $1}' name.txt |sort|uniq|while read id;
+do cd /data/2023_10_24_bcl_PJ/${id}
+md5sum ./00.RawData/*/*.gz >/data/2023_10_24_bcl_PJ/${id}/md5_raw.txt
+cd /data/2023_10_24_bcl_PJ/${id}
+md5sum ./01.CleanData/*/*.gz > /data/2023_10_24_bcl_PJ/${id}/md5_clean.txt
+cat /data/2023_10_24_bcl_PJ/${id}/md5_raw.txt /data/2023_10_24_bcl_PJ/${id}/md5_clean.txt >/data/2023_10_24_bcl_PJ/${id}/md5.txt
+rm -rf /data/2023_10_24_bcl_PJ/${id}/md5_raw.txt /data/2023_10_24_bcl_PJ/${id}/md5_clean.txt
+done
+
